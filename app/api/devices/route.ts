@@ -20,7 +20,12 @@ export async function GET() {
       devices (
         id,
         device_code,
-        device_name
+        device_name,
+        is_online,
+        last_seen_at,
+        wifi_ssid,
+        wifi_configured,
+        firmware_version
       )
     `)
     .eq("user_id", user.id)

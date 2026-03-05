@@ -30,7 +30,7 @@ export default function HomePage() {
             Bienestar sensorial para cada nino
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-            NeuroSense conecta dispositivos Micro:bit con sensores GSR, sonido y acelerometro
+            NeuroSense conecta dispositivos ESP8266 con sensores GSR, sonido y acelerometro
             para monitorear en tiempo real el estado sensorial de ninos neurodivergentes.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">

@@ -9,47 +9,44 @@ import {
   detectAlerts,
 } from "@/lib/sensor-processing"
 
-// Use service role for sensor data ingestion (no user auth needed)
+// Use service role for sensor data ingestion (ESP8266 sends data via auth_token, not user session)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function POST(request: Request) {
+  const receivedAt = Date.now()
+
   try {
     const body = await request.json()
 
-    const { device_id, gsr, sound, accel_x, accel_y, accel_z, password } = body
+    const { auth_token, gsr, sound, accel_x, accel_y, accel_z, sent_at } = body
 
-    // Validate required fields
-    if (!device_id || gsr === undefined || sound === undefined) {
+    // Validate required fields - ESP8266 authenticates with its unique auth_token
+    if (!auth_token || gsr === undefined || sound === undefined) {
       return NextResponse.json(
-        { error: "Campos requeridos: device_id, gsr, sound" },
+        { error: "Campos requeridos: auth_token, gsr, sound" },
         { status: 400 }
       )
     }
 
-    // Verify device exists and password matches
+    // Verify device exists via auth_token (unique per ESP8266)
     const { data: device, error: deviceError } = await supabase
       .from("devices")
-      .select("id, password_hash")
-      .eq("device_code", device_id)
+      .select("id, device_code, device_name")
+      .eq("auth_token", auth_token)
       .single()
 
     if (deviceError || !device) {
       return NextResponse.json(
-        { error: "Dispositivo no encontrado" },
-        { status: 404 }
-      )
-    }
-
-    // Simple password check (in production, use bcrypt compare)
-    if (password && device.password_hash !== password) {
-      return NextResponse.json(
-        { error: "Credenciales invalidas" },
+        { error: "Token de autenticacion invalido. Dispositivo no encontrado." },
         { status: 401 }
       )
     }
+
+    // Calculate latency if sent_at is provided (milliseconds since epoch from ESP8266)
+    const latencyMs = sent_at ? Math.max(0, receivedAt - sent_at) : null
 
     // Normalize sensor values
     const gsrNorm = normalizeGSR(gsr)
@@ -65,7 +62,7 @@ export async function POST(request: Request) {
 
     const timestamp = Math.floor(Date.now() / 1000)
 
-    // Store sensor data
+    // Store sensor data with latency measurement
     const { error: insertError } = await supabase.from("sensor_data").insert({
       device_id: device.id,
       gsr: gsrNorm,
@@ -75,6 +72,7 @@ export async function POST(request: Request) {
       accel_z: az,
       stress_index: filteredStress,
       timestamp,
+      latency_ms: latencyMs,
     })
 
     if (insertError) {
@@ -83,6 +81,15 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    // Update device last_seen_at and online status
+    await supabase
+      .from("devices")
+      .update({
+        last_seen_at: new Date().toISOString(),
+        is_online: true,
+      })
+      .eq("id", device.id)
 
     // Detect and store alerts
     const alerts = detectAlerts(filteredStress, gsrNorm, soundNorm, accelNorm)
@@ -103,8 +110,10 @@ export async function POST(request: Request) {
       stress_index: filteredStress,
       alerts: alerts.length,
       timestamp,
+      latency_ms: latencyMs,
+      device_id: device.id,
     })
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
@@ -113,5 +122,13 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json({ status: "NeuroSense API v1 - Sensor data endpoint" })
+  return NextResponse.json({
+    status: "NeuroSense API v1 - ESP8266 Sensor Data Endpoint",
+    version: "2.0",
+    auth: "token-based (auth_token)",
+    fields: {
+      required: ["auth_token", "gsr", "sound"],
+      optional: ["accel_x", "accel_y", "accel_z", "sent_at"],
+    },
+  })
 }
