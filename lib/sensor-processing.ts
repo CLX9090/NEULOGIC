@@ -36,14 +36,14 @@ export function normalizeGSR(raw: number): number {
 }
 
 export function normalizeSound(raw: number): number {
-  // Sound levels, normalize to 0-1 (0-255 range from Micro:bit)
+  // Sound levels, normalize to 0-1 (0-255 range from ESP8266 ADC or analog mic)
   return Math.max(0, Math.min(1, raw / 255))
 }
 
 export function normalizeAccel(x: number, y: number, z: number): number {
   // Magnitude of acceleration vector, normalized
   const magnitude = Math.sqrt(x * x + y * y + z * z)
-  // Micro:bit accel is in mg (1g = 1024mg), normalize around 1g baseline
+  // ESP8266 + MPU6050 accel in mg (1g = 1024mg), normalize around 1g baseline
   // Values above 2g (2048mg) are significant movement
   return Math.max(0, Math.min(1, (magnitude - 1024) / 2048))
 }

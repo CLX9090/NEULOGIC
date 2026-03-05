@@ -7,6 +7,11 @@ interface DeviceInfo {
   id: string
   device_code: string
   device_name: string | null
+  is_online: boolean
+  last_seen_at: string | null
+  wifi_ssid: string | null
+  wifi_configured: boolean
+  firmware_version: string | null
 }
 
 interface DeviceLink {

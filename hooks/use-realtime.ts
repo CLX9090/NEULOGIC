@@ -14,6 +14,7 @@ export interface SensorReading {
   accel_z: number
   stress_index: number
   timestamp: number
+  latency_ms: number | null
   created_at: string
 }
 

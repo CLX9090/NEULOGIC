@@ -8,7 +8,8 @@ import { MetricCard } from "@/components/metric-card"
 import { SensorChart } from "@/components/sensor-chart"
 import { StressTimeline } from "@/components/stress-timeline"
 import { RecentAlerts } from "@/components/recent-alerts"
-import { Zap, Volume2, Activity, Cpu } from "lucide-react"
+import { EspSimulator } from "@/components/esp-simulator"
+import { Zap, Volume2, Activity, Cpu, Timer } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -39,7 +40,7 @@ export default function DashboardPage() {
             No hay dispositivos vinculados
           </h2>
           <p className="mb-6 text-muted-foreground">
-            Vincula tu primer Micro:bit para comenzar a monitorear.
+            Conecta tu primer ESP8266 por USB para comenzar a monitorear.
           </p>
           <Button asChild>
             <Link href="/dashboard/devices">Vincular dispositivo</Link>
@@ -78,6 +79,14 @@ export default function DashboardPage() {
   const gsrTrend = getTrend("gsr")
   const soundTrend = getTrend("sound")
 
+  // Calculate average latency from recent readings
+  const latencyReadings = sensorData.filter((d) => d.latency_ms !== null && d.latency_ms !== undefined)
+  const avgLatency =
+    latencyReadings.length > 0
+      ? Math.round(latencyReadings.slice(-10).reduce((s, d) => s + (d.latency_ms ?? 0), 0) / Math.min(latencyReadings.length, 10))
+      : null
+  const latestLatency = latestReading?.latency_ms ?? null
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -94,7 +103,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Top Row: Stress Gauge + Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StressGauge
           value={latestReading?.stress_index ?? null}
           className="md:row-span-2"
@@ -123,6 +132,13 @@ export default function DashboardPage() {
           subtitle="magnitud (g)"
           icon={<Activity className="h-4 w-4" style={{ color: "#f97316" }} />}
           color="#f97316"
+        />
+        <MetricCard
+          title="Latencia ESP8266"
+          value={latestLatency !== null ? `${latestLatency}ms` : "--"}
+          subtitle={avgLatency !== null ? `promedio: ${avgLatency}ms` : "sin datos"}
+          icon={<Timer className="h-4 w-4" style={{ color: "#a78bfa" }} />}
+          color="#a78bfa"
         />
       </div>
 
@@ -161,6 +177,9 @@ export default function DashboardPage() {
         threshold={0.7}
         thresholdLabel="Movimiento alto"
       />
+
+      {/* ESP8266 Simulator - for testing */}
+      <EspSimulator deviceId={deviceId} />
     </div>
   )
 }
